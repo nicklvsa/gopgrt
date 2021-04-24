@@ -114,11 +114,12 @@ func (s *SocketCore) HandleEvent(client *SocketClient, payload *SocketEvent) err
 		}
 
 		listenerChan := make(chan TriggerEvent)
+		client.Unsubscribe[*subscription.TableName] = make(chan int8)
 		errChan := make(chan error)
 
 		go client.Trigger.Listen(listenerChan, errChan)
 
-		go func() {
+		client.TableSubscription[*subscription.TableName] = func() {
 			for {
 				select {
 				case listen := <-listenerChan:
@@ -130,9 +131,14 @@ func (s *SocketCore) HandleEvent(client *SocketClient, payload *SocketEvent) err
 					if err := s.EmitToClient(client, &response); err != nil {
 						fmt.Printf("Error: %s\n", err.Error())
 					}
+				case <-client.Unsubscribe[*subscription.TableName]:
+					client.TableSubscription = nil
+					return
 				}
 			}
-		}()
+		}
+
+		go client.TableSubscription[*subscription.TableName]()
 
 		response := SocketEvent{
 			Type: SocketEventTypeSubscribeRespond,
@@ -143,6 +149,15 @@ func (s *SocketCore) HandleEvent(client *SocketClient, payload *SocketEvent) err
 
 		if err := s.EmitToClient(client, &response); err != nil {
 			return err
+		}
+	case SocketEventTypeUnsubscribe:
+		var unsub UnsubscribePayload
+		if err := UnmarshalInterface(payload.Payload, &unsub); err != nil {
+			return err
+		}
+
+		if client.Unsubscribe[*unsub.TableName] != nil {
+			client.Unsubscribe[*unsub.TableName] <- 1
 		}
 	default:
 		return fmt.Errorf("invalid payload detected")

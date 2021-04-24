@@ -12,6 +12,7 @@ const (
 	SocketEventTypeConnect          SocketEventType = "connect"
 	SocketEventTypeDisconnect       SocketEventType = "disconnect"
 	SocketEventTypeSubscribe        SocketEventType = "subscribe"
+	SocketEventTypeUnsubscribe      SocketEventType = "unsubscribe"
 	SocketEventTypeSubscribeRespond SocketEventType = "subscription:response"
 )
 
@@ -33,11 +34,13 @@ type SocketCore struct {
 }
 
 type SocketClient struct {
-	Core       *SocketCore
-	Connection *websocket.Conn
-	Data       chan SocketEvent
-	User       *SocketUser
-	Trigger    *Trigger
+	Core              *SocketCore
+	Connection        *websocket.Conn
+	Data              chan SocketEvent
+	User              *SocketUser
+	Trigger           *Trigger
+	Unsubscribe       map[string]chan int8
+	TableSubscription map[string]func()
 }
 
 type ConnectionPayload struct {
@@ -47,6 +50,10 @@ type ConnectionPayload struct {
 type SubscriptionPayload struct {
 	TableName *string  `json:"table_name"`
 	Columns   []string `json:"columns"`
+}
+
+type UnsubscribePayload struct {
+	TableName *string `json:"table_name"`
 }
 
 type MessagePayload struct {

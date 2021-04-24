@@ -25,10 +25,12 @@ func RegisterConnection(conn *websocket.Conn, token string, trigger *Trigger) er
 	}
 
 	client := SocketClient{
-		Core:       core,
-		Connection: conn,
-		Trigger:    trigger,
-		Data:       make(chan SocketEvent),
+		Core:              core,
+		Connection:        conn,
+		Trigger:           trigger,
+		Data:              make(chan SocketEvent),
+		TableSubscription: make(map[string]func()),
+		Unsubscribe:       make(map[string]chan int8),
 		User: &SocketUser{
 			Token: token,
 		},
